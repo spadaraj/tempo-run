@@ -5,6 +5,7 @@ export const SPOTIFY_SCOPES = [
   "playlist-modify-public",
   "user-library-read",
   "user-top-read",
+  "user-read-recently-played",
 ].join(" ");
 
 export function getSpotifyEnv() {
@@ -46,4 +47,118 @@ export async function exchangeCodeForToken(code: string) {
     refresh_token: string;
     scope: string;
   };
+}
+
+interface SpotifyUser {
+  id: string;
+  display_name: string | null;
+  email: string | null;
+}
+
+export async function getCurrentUser(token: string): Promise<SpotifyUser> {
+  const res = await fetch("https://api.spotify.com/v1/me", {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch user: ${res.status}`);
+  return res.json();
+}
+
+export interface SpotifyTrack {
+  uri: string;
+  id: string;
+  name: string;
+  duration_ms: number;
+  artists: { name: string }[];
+}
+
+export async function searchTrack(
+  token: string,
+  artist: string,
+  title: string,
+): Promise<SpotifyTrack | null> {
+  const q = `track:${title} artist:${artist}`;
+  const res = await fetch(
+    `https://api.spotify.com/v1/search?type=track&limit=1&q=${encodeURIComponent(
+      q,
+    )}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    },
+  );
+  if (!res.ok) return null;
+  const data = (await res.json()) as {
+    tracks?: { items?: SpotifyTrack[] };
+  };
+  return data.tracks?.items?.[0] ?? null;
+}
+
+export async function createPlaylist(
+  token: string,
+  userId: string,
+  name: string,
+  description: string,
+): Promise<{ id: string; uri: string; external_urls: { spotify: string } }> {
+  const res = await fetch(
+    `https://api.spotify.com/v1/users/${userId}/playlists`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name, description, public: false }),
+    },
+  );
+  if (!res.ok) {
+    throw new Error(`Create playlist failed: ${res.status} ${await res.text()}`);
+  }
+  return res.json();
+}
+
+export async function addTracksToPlaylist(
+  token: string,
+  playlistId: string,
+  uris: string[],
+) {
+  if (uris.length === 0) return;
+  const res = await fetch(
+    `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ uris }),
+    },
+  );
+  if (!res.ok) {
+    throw new Error(`Add tracks failed: ${res.status} ${await res.text()}`);
+  }
+}
+
+export interface RecentItem {
+  track: {
+    uri: string;
+    duration_ms: number;
+  };
+  played_at: string;
+}
+
+export async function getRecentlyPlayed(
+  token: string,
+  afterMs?: number,
+): Promise<RecentItem[]> {
+  const url = new URL("https://api.spotify.com/v1/me/player/recently-played");
+  url.searchParams.set("limit", "50");
+  if (afterMs) url.searchParams.set("after", afterMs.toString());
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) return [];
+  const data = (await res.json()) as { items?: RecentItem[] };
+  return data.items ?? [];
 }

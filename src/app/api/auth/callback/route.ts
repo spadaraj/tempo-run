@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { exchangeCodeForToken } from "@/lib/spotify";
+import { exchangeCodeForToken, getCurrentUser } from "@/lib/spotify";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -26,8 +26,9 @@ export async function GET(request: Request) {
   }
 
   const token = await exchangeCodeForToken(code);
+  const user = await getCurrentUser(token.access_token);
 
-  const res = NextResponse.redirect(new URL("/upload", url));
+  const res = NextResponse.redirect(new URL("/", url));
   res.cookies.set("spotify_access_token", token.access_token, {
     httpOnly: true,
     sameSite: "lax",
@@ -35,6 +36,12 @@ export async function GET(request: Request) {
     maxAge: token.expires_in,
   });
   res.cookies.set("spotify_refresh_token", token.refresh_token, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+  res.cookies.set("user_id", user.id, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",

@@ -74,6 +74,15 @@ export function parseAppleHealthExport(
           attrs.sum
         ) {
           current.steps = parseFloat(attrs.sum);
+        } else if (
+          attrs.type === "HKQuantityTypeIdentifierDistanceWalkingRunning" &&
+          attrs.sum &&
+          (current.distanceMi == null || current.distanceMi === 0)
+        ) {
+          current.distanceMi = toMiles(parseFloat(attrs.sum), attrs.unit);
+          if (current.distanceMi > 0) {
+            current.paceMinPerMi = current.durationMin / current.distanceMi;
+          }
         }
       }
     });
