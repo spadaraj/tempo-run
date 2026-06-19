@@ -12,6 +12,7 @@ export async function GET() {
     scope: SPOTIFY_SCOPES,
     redirect_uri: redirectUri,
     state,
+    show_dialog: "true",
   });
 
   const res = NextResponse.redirect(
