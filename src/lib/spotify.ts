@@ -96,23 +96,25 @@ export async function searchTrack(
 
 export async function createPlaylist(
   token: string,
-  userId: string,
+  _userId: string,
   name: string,
   description: string,
 ): Promise<{ id: string; uri: string; external_urls: { spotify: string } }> {
-  const res = await fetch(
-    `https://api.spotify.com/v1/users/${userId}/playlists`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name, description, public: false }),
+  const res = await fetch(`https://api.spotify.com/v1/me/playlists`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify({ name, description, public: false }),
+  });
   if (!res.ok) {
-    throw new Error(`Create playlist failed: ${res.status} ${await res.text()}`);
+    const body = await res.text();
+    throw new Error(
+      `Create playlist failed: ${res.status} ${body}. ` +
+        `If you see 403 Forbidden, your Spotify account is not on the Tempo Run app's User Management allow-list, ` +
+        `or the email there doesn't match your Spotify account email exactly.`,
+    );
   }
   return res.json();
 }
