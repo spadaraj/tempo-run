@@ -36,6 +36,20 @@ async function pickTracksForBlock(
 }
 
 export async function POST() {
+  try {
+    return await generate();
+  } catch (e) {
+    console.error("[playlist/generate] failed:", e);
+    return NextResponse.json(
+      {
+        error: `Playlist generation failed: ${(e as Error).message}`,
+      },
+      { status: 500 },
+    );
+  }
+}
+
+async function generate() {
   let session;
   try {
     session = await requireSession();

@@ -13,8 +13,17 @@ export default function GeneratePlaylistButton() {
     setError(null);
     try {
       const res = await fetch("/api/playlist/generate", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Failed: ${res.status}`);
+      const text = await res.text();
+      let data: { sessionId?: string; error?: string } = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(
+          `Server returned non-JSON (${res.status}): ${text.slice(0, 200)}`,
+        );
+      }
+      if (!res.ok)
+        throw new Error(data.error || `Failed: ${res.status}`);
       router.push(`/run/${data.sessionId}`);
     } catch (e) {
       setError((e as Error).message);
